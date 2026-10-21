@@ -1,0 +1,43 @@
+name: mobsec-rag scan
+description: Scan an APK, IPA or Android/iOS source tree and upload SARIF results to GitHub code scanning
+branding:
+  icon: shield
+  color: blue
+inputs:
+  target:
+    description: Path to the .apk, .ipa or source directory to scan
+    required: true
+    default: "."
+  fail-on:
+    description: Fail the job when app-code findings at this severity or above exist (high, medium, low, or empty)
+    required: false
+    default: "high"
+  llm:
+    description: LLM provider (none, anthropic, openai, ollama). Set the matching API key as an env secret.
+    required: false
+    default: "none"
+  output:
+    description: Output directory for reports
+    required: false
+    default: "mobsec-report"
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+    - shell: bash
+      run: pip install "${{ github.action_path }}" && mobsec ingest
+    - shell: bash
+      run: |
+        set +e
+        mobsec scan "${{ inputs.target }}" -o "${{ inputs.output }}" --llm "${{ inputs.llm }}" \
+          ${{ inputs.fail-on && format('--fail-on {0}', inputs.fail-on) || '' }}
+        echo "MOBSEC_EXIT=$?" >> "$GITHUB_ENV"
+    - uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: ${{ inputs.output }}/report.sarif
+        category: mobsec-rag
+    - shell: bash
+      run: exit "${MOBSEC_EXIT:-0}"

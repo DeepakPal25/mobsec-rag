@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mobsec-rag"
+version = "0.1.0"
+description = "RAG-assisted security scanner for Android and iOS apps: APK, IPA and source code, with OWASP MASVS/MASTG-grounded fixes"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [{ name = "Deepak Pal" }]
+keywords = ["security", "android", "ios", "apk", "ipa", "sast", "owasp", "masvs", "mastg", "rag", "llm"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Topic :: Security",
+  "Topic :: Software Development :: Quality Assurance",
+]
+dependencies = []  # core scanner, RAG and LLM clients use only the standard library
+
+[project.optional-dependencies]
+embeddings = ["sentence-transformers>=3.0", "numpy>=1.26"]
+dev = ["pytest>=8"]
+
+[project.scripts]
+mobsec = "mobsec.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/DeepakPal25/mobsec-rag"
+Issues = "https://github.com/DeepakPal25/mobsec-rag/issues"
+
+[tool.setuptools.packages.find]
+include = ["mobsec*"]
+
+[tool.setuptools.package-data]
+mobsec = ["knowledge/*.md"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
