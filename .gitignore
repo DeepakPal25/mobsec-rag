@@ -1,11 +1,35 @@
+# Python
 __pycache__/
-*.pyc
-.venv/
+*.py[cod]
 *.egg-info/
+.eggs/
 build/
 dist/
+.venv/
+venv/
+env/
+
+# Test / coverage
 .pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.tox/
+
+# Project-specific
 mobsec-report/
 out/
 *.apk
 *.ipa
+
+# Env / secrets
+.env
+.env.*
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
