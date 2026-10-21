@@ -24,6 +24,75 @@ For each issue you get the severity, where it is (file + line, or class + method
                                   OWASP MASTG + MASVS + curated fix guides (~2,850 chunks)
 ```
 
+## Why mobsec-rag?
+
+Most mobile static analyzers stop at "here's a pattern match on line 42." That tells you *what* was found but not *why it matters*, *how an attacker would actually exploit it*, or *what the fix should look like for this specific codebase*. mobsec-rag is built to close that gap:
+
+- It runs **109 purpose-built checks** against the compiled artifact (APK/IPA) or the raw source tree, not just a generic linter ruleset — including bytecode-level checks (decompiled DEX, Mach-O disassembly) that source-only scanners miss entirely.
+- Every finding is **grounded in OWASP's own guidance**. Instead of inventing an explanation, it retrieves the exact MASVS requirement and MASTG test case that applies, via retrieval-augmented generation (RAG) over a locally built knowledge base of ~2,850 chunks.
+- An **optional LLM triage step** reads the finding plus the retrieved OWASP passages plus the surrounding code, and produces an app-specific attack scenario, a concrete fix (with code), and a false-positive call — rather than a canned description that's identical for every app.
+- It runs **fully offline by default**. Nothing is required to leave your machine; LLM triage is opt-in and only activates if you provide an API key or point it at a local Ollama model.
+
+## How it works
+
+```
+   1. INPUT                2. STATIC ANALYSIS          3. RETRIEVAL                 4. TRIAGE (optional)        5. REPORT
+ ──────────────           ─────────────────────      ──────────────────          ──────────────────────      ──────────────
+ .apk / .ipa /     ───▶   Parse the artifact in-     For each finding, build  ───▶ LLM reads the finding +    HTML, JSON,
+ source folder             process (no decompiler     a query from its rule        code context + OWASP        SARIF, Markdown
+ or .zip                   shell-out): AndroidManifest, type/location/code and      passages and writes an
+                           DEX bytecode, native .so,   run it against the RAG      app-specific explanation,
+                           Mach-O binary, Info.plist,  index (BM25, optionally     attack scenario, fix code,
+                           source files per language.  fused with dense embeddings  and a true/false-positive
+                           109 checks flag issues      via reciprocal rank fusion) verdict. Skipped entirely
+                           with severity + location.   over the OWASP MASTG/MASVS  in offline mode.
+                                                        corpus + curated fix guides.
+```
+
+Concretely, a scan (`mobsec scan app.apk`) does:
+
+1. **Parse** — the APK/IPA is unpacked and parsed directly in Python: the manifest/plist, the DEX bytecode is disassembled method-by-method, native ELF `.so` and Mach-O binaries are inspected for protections (PIE, stack canary, ARC, encryption) and strings, resources/`.arsc` and XML are decoded. Source-folder scans walk the tree and parse each file (Java/Kotlin/Gradle, Swift/Obj-C, Dart, JS/TS) with lightweight per-language rule engines in `mobsec/source/rules.py`.
+2. **Detect** — each of the 109 checks runs against that parsed structure and emits a `Finding` (`mobsec/finding.py`) with a severity, a precise location (file + line, or class + method for bytecode), and the rule that fired. Findings inside third-party/vendored libraries are detected and down-weighted so your own app code surfaces first.
+3. **Retrieve** — `mobsec/rag.py` turns each finding into a query and ranks the pre-ingested OWASP MASTG + MASVS knowledge base (built once via `mobsec ingest` into `mobsec/knowledge/`) with BM25, optionally fused with dense embeddings if you installed the `embeddings` extra. The top passages are attached to the finding as grounding.
+4. **Triage (optional)** — if an LLM is configured (`mobsec/llm.py`), each finding plus its code context plus the retrieved passages is sent to the model, which returns a tailored explanation, a realistic attack scenario, fix code, and a true/false-positive verdict. With `--llm none` this step is skipped and reports use the static template text instead — the scan is complete either way.
+5. **Report** — `mobsec/report.py` renders the findings into `report.html` / `.json` / `.sarif` / `.md`, plus app metadata (permissions, exported components, binary protections, dependencies) collected during parsing.
+
+## Project structure
+
+```
+mobsec/
+├── cli.py              # `mobsec` command entrypoint (scan, ingest, ask, serve, rules)
+├── pipeline.py          # orchestrates parse → detect → retrieve → triage → report for one scan
+├── finding.py           # the Finding data model shared by every check
+├── catalog.py           # the 109-rule catalog (id, severity, MASVS/CWE mapping)
+├── rag.py               # BM25 / hybrid retrieval over the OWASP knowledge base
+├── llm.py               # optional LLM clients (Anthropic, OpenAI-compatible, Ollama)
+├── report.py            # HTML / JSON / SARIF / Markdown report rendering
+├── secrets.py           # hardcoded-secret detection (API keys, tokens, credentials)
+├── web.py               # `mobsec serve` local drag-and-drop web UI
+├── android/             # AndroidManifest + manifest-derived checks
+│   ├── apk.py           #   APK container parsing (zip, signing, resources)
+│   └── manifest.py      #   manifest/XML analysis (exported components, permissions)
+├── ios/                 # Info.plist / entitlements / Mach-O checks
+│   ├── ipa.py           #   IPA container parsing
+│   └── plist_checks.py  #   Info.plist and entitlement analysis
+├── parsers/             # low-level binary format parsers (stdlib only)
+│   ├── dex.py           #   DEX bytecode disassembly
+│   ├── axml.py           #   Android binary XML decoding
+│   ├── arsc.py            #   Android compiled resources decoding
+│   ├── elf.py              #   native .so (ELF) inspection
+│   └── macho.py            #   Mach-O binary inspection
+├── source/              # source-tree (non-binary) scanning
+│   ├── scanner.py        #   walks a source folder/zip and dispatches per file type
+│   └── rules.py          #   per-language rule checks (Java/Kotlin/Swift/Dart/JS/TS)
+└── knowledge/            # OWASP MASTG/MASVS corpus + curated fix guides (built by `mobsec ingest`)
+
+tests/                    # pytest suite: parsers, analyzers, full pipeline
+docs/RULES.md             # full list of the 109 checks with MASVS/CWE mapping
+action.yml                 # GitHub Action wrapper (used in CI usage below)
+Dockerfile                  # container build for `docker run mobsec-rag scan ...`
+```
+
 ## Quick start
 
 ```bash
