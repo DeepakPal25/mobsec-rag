@@ -281,6 +281,51 @@ R("IOS-URL-HANDLER", I, "info", "MASVS-PLATFORM-1", "M4", "CWE-20", "URL / deep 
   "iOS custom URL scheme deep link validation universal links", "Validate host/path/params of incoming URLs.")
 
 
+# ------------------------------------------------------------------ hardening / anti-reverse-engineering (MASVS-RESILIENCE)
+# Defaults are low/info: these are defence-in-depth controls. `--profile high-risk` (banking, health,
+# payments, DRM, games with economies) raises them to medium, matching MASVS-R expectations.
+R("AND-NO-ANTI-DEBUG", A, "low", "MASVS-RESILIENCE-4", "M7", "CWE-693", "No anti-debugging checks",
+  "Android anti-debugging isDebuggerConnected TracerPid JDWP detection",
+  "Detect debuggers at runtime (Debug.isDebuggerConnected, TracerPid in /proc/self/status) and react server-side.")
+R("AND-NO-HOOK-DETECTION", A, "low", "MASVS-RESILIENCE-4", "M7", "CWE-693", "No Frida / Xposed hooking detection",
+  "Android Frida Xposed hooking detection instrumentation /proc/self/maps",
+  "Detect instrumentation (Frida server/gadget, Xposed/LSPosed, Substrate) or use a RASP SDK; enforce via attestation.")
+R("AND-NO-EMULATOR-DETECTION", A, "info", "MASVS-RESILIENCE-1", "M7", "CWE-693", "No emulator detection",
+  "Android emulator detection goldfish ranchu Build properties",
+  "Detect emulators (Build.FINGERPRINT/HARDWARE, qemu properties) for flows that must run on real devices.")
+R("AND-NO-TAMPER-CHECK", A, "low", "MASVS-RESILIENCE-2", "M7", "CWE-354", "No app signature / integrity (anti-tampering) check",
+  "Android anti-tampering signature verification repackaging getPackageInfo signingInfo installer",
+  "Verify the signing certificate and installer at runtime, and verify Play Integrity verdicts (appIntegrity) on your server.")
+R("AND-NO-ATTESTATION", A, "info", "MASVS-RESILIENCE-2", "M7", "CWE-693", "No Play Integrity attestation",
+  "Play Integrity API attestation server verification", "Request Play Integrity tokens for sensitive actions and verify them server-side.")
+R("AND-NO-TAPJACKING-PROTECTION", A, "low", "MASVS-PLATFORM-3", "M8", "CWE-1021", "No tapjacking / overlay protection",
+  "Android tapjacking overlay filterTouchesWhenObscured setHideOverlayWindows",
+  "Set filterTouchesWhenObscured on sensitive views and call window.setHideOverlayWindows(true) (Android 12+).")
+R("AND-DEBUG-INFO-RETAINED", A, "low", "MASVS-RESILIENCE-3", "M7", "CWE-215", "Source file names / line numbers kept in DEX",
+  "R8 renamesourcefileattribute keepattributes SourceFile LineNumberTable",
+  "Add -renamesourcefileattribute SourceFile to proguard-rules.pro and upload mapping.txt for crash de-obfuscation.")
+R("AND-NO-STRING-ENCRYPTION", A, "info", "MASVS-RESILIENCE-3", "M7", "CWE-312", "Sensitive strings are stored in plaintext in the app",
+  "string encryption obfuscation DexGuard StringFog plaintext strings reverse engineering",
+  "Move secrets server-side; for high-risk apps encrypt sensitive constants with a commercial protector or string-encryption plugin.")
+R("AND-NATIVE-NOT-STRIPPED", A, "low", "MASVS-RESILIENCE-3", "M7", "CWE-215", "App native library not stripped (symbols present)",
+  "native library strip symbols visibility hidden JNI", "Strip release .so files and build with -fvisibility=hidden; register JNI methods dynamically.")
+R("AND-PACKED", A, "info", "MASVS-RESILIENCE-3", "M7", "CWE-693", "App is packed / protected by a commercial protector",
+  "Android packer protector DexGuard Jiagu Bangcle", "Analysis of protected code is limited; scan the unprotected build as well.")
+R("IOS-NOT-OBFUSCATED", I, "low", "MASVS-RESILIENCE-3", "M7", "CWE-693", "Class and method names are not obfuscated",
+  "iOS obfuscation Swift Objective-C class names iXGuard SwiftShield reverse engineering",
+  "For high-risk apps use an obfuscator (e.g. iXGuard, obfuscator-llvm) and keep business logic server-side.")
+R("IOS-NO-ANTI-DEBUG", I, "low", "MASVS-RESILIENCE-4", "M7", "CWE-693", "No anti-debugging checks",
+  "iOS anti-debugging ptrace PT_DENY_ATTACH sysctl P_TRACED", "Detect debuggers (sysctl P_TRACED) and deny attach (ptrace PT_DENY_ATTACH) in release builds.")
+R("IOS-NO-HOOK-DETECTION", I, "low", "MASVS-RESILIENCE-4", "M7", "CWE-693", "No Frida / Substrate hooking detection",
+  "iOS Frida detection dyld images Substrate hooking", "Detect injected dylibs (dyld image list), Frida ports and symbols, or use a RASP SDK.")
+R("IOS-NO-TAMPER-CHECK", I, "low", "MASVS-RESILIENCE-2", "M7", "CWE-354", "No anti-tampering / re-signing check",
+  "iOS anti-tampering re-signing embedded.mobileprovision code signature App Attest",
+  "Check for re-signing (team ID, provisioning profile) and verify App Attest assertions on your server.")
+R("IOS-NO-ATTESTATION", I, "info", "MASVS-RESILIENCE-2", "M7", "CWE-693", "No App Attest / DeviceCheck",
+  "iOS App Attest DCAppAttestService DeviceCheck server verification", "Use DCAppAttestService and verify attestations server-side.")
+R("IOS-NO-SCREEN-PROTECTION", I, "info", "MASVS-PLATFORM-3", "M6", "CWE-200", "No screen recording / screenshot protection",
+  "iOS screen capture isCaptured screenshot app switcher snapshot", "Hide sensitive content when UIScreen.isCaptured is true and when the app resigns active.")
+
 # ------------------------------------------------------------------ cross-platform (Flutter / React Native / JS)
 R("XP-TLS-BYPASS", X, "high", "MASVS-NETWORK-1", "M5", "CWE-295", "TLS certificate validation disabled (Flutter / JS)",
   "certificate validation disabled badCertificateCallback rejectUnauthorized",

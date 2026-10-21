@@ -31,7 +31,7 @@ def cmd_scan(a):
     from .report import write_all
     llm = _llm(a)
     result = run(a.target, llm=llm, include_tests=a.include_tests, min_severity=a.min_severity,
-                 max_llm=a.max_llm, workers=a.workers)
+                 max_llm=a.max_llm, workers=a.workers, profile=a.profile)
     out = Path(a.out)
     paths = write_all(result, out, tuple(a.format.split(",")))
     counts = {}
@@ -122,6 +122,8 @@ def main(argv=None):
     s.add_argument("--workers", type=int, default=4, help="parallel LLM requests")
     s.add_argument("--fail-on", choices=["high", "medium", "low"], help="exit 2 if app-code findings at this level exist (CI)")
     s.add_argument("--open", action="store_true", help="open the HTML report when done")
+    s.add_argument("--profile", default="standard", choices=["standard", "high-risk"],
+                   help="high-risk (banking, health, payments, DRM): missing hardening controls are rated medium")
     llm_args(s)
     s.set_defaults(fn=cmd_scan)
 

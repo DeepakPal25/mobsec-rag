@@ -23,7 +23,7 @@ SKIP_DIRS = {".git", ".svn", ".hg", ".gradle", ".idea", ".vscode", "build", "Bui
 TEST_DIRS = {"test", "tests", "androidTest", "testDebug", "Tests", "UITests", "__tests__", "integration_test",
              "sharedTest", "testFixtures"}
 CODE_EXT = (".java", ".kt", ".kts", ".gradle", ".swift", ".m", ".mm", ".h", ".dart", ".js", ".jsx", ".ts", ".tsx")
-CONFIG_EXT = (".xml", ".plist", ".entitlements", ".json", ".properties", ".xcconfig", ".yaml", ".yml", ".env",
+CONFIG_EXT = (".pro", ".xml", ".plist", ".entitlements", ".json", ".properties", ".xcconfig", ".yaml", ".yml", ".env",
               ".strings", ".pbxproj", ".cfg", ".conf", ".ini")
 KEY_EXT = (".p12", ".pfx", ".jks", ".bks", ".keystore", ".pem", ".key")
 MAX_BYTES = 3_000_000
@@ -157,20 +157,17 @@ class SourceScanner:
                 self.c.add("AND-NO-PINNING", "(project)", 0, "No CertificatePinner, <pin-set> or pinning library found")
             if "iOS" in kinds:
                 self.c.add("IOS-NO-PINNING", "(project)", 0, "No NSPinnedDomains, TrustKit or trust evaluation code found")
-        if not ROOT_RX.search(joined_code):
-            if "Android" in kinds:
-                self.c.add("AND-NO-ROOT-DETECTION", "(project)", 0, "No root detection or Play Integrity usage found")
-            if "iOS" in kinds:
-                self.c.add("IOS-NO-JB-DETECTION", "(project)", 0, "No jailbreak detection or App Attest usage found")
         if "Android" in kinds and manifests and not FLAG_SECURE_RX.search(joined_code):
             self.c.add("AND-NO-FLAG-SECURE", "(project)", 0, "FLAG_SECURE is never set")
         if "iOS" in kinds and not privacy_manifest:
             self.c.add("IOS-NO-PRIVACY-MANIFEST", "(project)", 0, "No PrivacyInfo.xcprivacy in the project")
 
         deps = self.dependencies(texts)
+        from ..hardening import source as hardening_source
+        hardening = hardening_source(self, texts, kinds, deps)
         app = {"platform": " + ".join(sorted(kinds)) or "unknown", "packages": sorted(set(pkgs)),
                "min_sdk": sdk.get("min"), "target_sdk": sdk.get("target"), "files_scanned": scanned,
-               "dependencies": deps[:200]}
+               "dependencies": deps[:200], "hardening": hardening}
         kind = "ios-source" if kinds == {"iOS"} else "android-source" if kinds <= {"Android"} and kinds else "source"
         if not kinds:
             self.notes.append("No Android or iOS project files detected; only generic secret checks were applied.")

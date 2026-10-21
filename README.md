@@ -18,7 +18,7 @@ For each issue you get the severity, where it is (file + line, or class + method
         ▼
  ┌──────────────────┐  findings + code context  ┌───────────────┐  top passages  ┌──────────────┐
  │ static analyzers │ ────────────────────────▶ │   retriever   │ ─────────────▶ │  LLM triage  │ ──▶ HTML · JSON · SARIF · Markdown
- │ 109 checks       │                           │ BM25 (+dense) │                │  (optional)  │
+ │ 125 checks       │                           │ BM25 (+dense) │                │  (optional)  │
  └──────────────────┘                           └───────────────┘                └──────────────┘
                                                         ▲
                                   OWASP MASTG + MASVS + curated fix guides (~2,850 chunks)
@@ -120,6 +120,16 @@ The scanner, retrieval and reports work fully offline. An LLM adds per-finding t
 
 `--llm auto` (the default) uses Anthropic if its key is set, then OpenAI, else offline.
 
+## Hardening profile
+
+Apps differ in how much reverse-engineering protection they need. By default, missing hardening controls are rated `info` / `low`. For banking, health, payments, DRM or games with in-app economies, use:
+
+```bash
+mobsec scan app.apk --profile high-risk
+```
+
+This rates every missing MASVS-RESILIENCE control as `medium`, matching what OWASP MASVS-R expects for high-risk apps. The fix guidance includes R8 configuration, Kotlin and Swift snippets for anti-debugging, Frida detection, signature and installer checks, Play Integrity and App Attest, tapjacking and screen-capture protection, and release build settings for stripping symbols.
+
 ## Reports
 
 Each scan writes `report.html`, `report.json`, `report.sarif` and `report.md`:
@@ -127,12 +137,13 @@ Each scan writes `report.html`, `report.json`, `report.sarif` and `report.md`:
 - **Overview:** security score (0-100), counts by severity, executive summary.
 - **Findings:** one card per issue type with risk, attack scenario, every location (with surrounding code), fix steps, fix code, verification, and the retrieved OWASP passages.
 - **Files / locations with issues:** every file (source) or class (APK) that has a problem, riskiest first, each problem with its line and fix.
+- **Hardening:** a checklist of every protection control, present or missing, with the evidence found and a link to the fix.
 - **App info:** package/bundle, SDK/OS levels, permissions, exported components, binary protections, frameworks, SDKs, dependencies.
 - **SARIF** works with GitHub code scanning; **JSON** has a `files` section for tooling.
 
 ## What it checks
 
-109 checks mapped to OWASP MASVS v2, Mobile Top 10 (2024) and CWE. Full list: [docs/RULES.md](docs/RULES.md) or `mobsec rules`.
+125 checks mapped to OWASP MASVS v2, Mobile Top 10 (2024) and CWE. Full list: [docs/RULES.md](docs/RULES.md) or `mobsec rules`.
 
 - **Storage:** secrets in SharedPreferences / UserDefaults / AsyncStorage, world-readable files, external storage, unencrypted DBs, weak Keychain classes, `NSFileProtectionNone`, backups, logs, clipboard, file sharing.
 - **Crypto:** ECB / DES / RC4, RSA without OAEP, unauthenticated CBC, MD5/SHA-1, hardcoded keys and static IVs (including keys held in class fields), weak or seeded RNGs.
@@ -141,6 +152,7 @@ Each scan writes `report.html`, `report.json`, `report.sarif` and `report.md`:
 - **Code:** SQL injection (Android bytecode, Swift interpolation fragments in Mach-O, source), command execution, dynamic code loading, Zip Slip, eval.
 - **Auth:** biometrics without `CryptoObject` / `SecAccessControl`.
 - **Resilience and build:** debuggable, `get-task-allow`, testOnly, debug certificates, v1-only signing (Janus), R8 disabled, PIE / canary / ARC / NX / RELRO, unstripped symbols, root/jailbreak detection and attestation presence, FLAG_SECURE.
+- **Hardening / anti-reverse-engineering (MASVS-RESILIENCE):** code obfuscation (R8/ProGuard, readable class and type names), source file names left in DEX, stripped symbols (DEX, `.so`, Mach-O), root and jailbreak detection, anti-debugging (JDWP, TracerPid, ptrace / sysctl), Frida / Xposed / Substrate hooking detection, emulator detection, anti-tampering (signature, installer, re-signing checks), Play Integrity / App Attest attestation, tapjacking / overlay protection, screenshot and screen-recording protection, plaintext secrets, and detection of RASP SDKs and packers (freeRASP, Approov, DexGuard, Promon, Appdome, Jiagu, Bangcle, Legu and others).
 - **Secrets:** AWS, Google, Stripe, Slack, GitHub, OpenAI/Anthropic, SendGrid, private keys, JWTs, credentials in URLs, hardcoded password comparisons, Gradle signing passwords, bundled keystores, Firebase and cloud bucket URLs.
 - **Privacy:** dangerous permissions, tracker SDKs, missing iOS privacy manifest.
 

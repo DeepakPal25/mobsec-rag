@@ -61,6 +61,7 @@ class IPAAnalyzer:
         self.pinning = check_info_plist(info, self.c, app_dir + "Info.plist", ptext)["pinning"]
         exe_name = info.get("CFBundleExecutable") or app_dir.split("/")[1][:-4]
         exe = app_dir + exe_name
+        self.exe_name = exe_name
         if exe not in self.names:
             raise ValueError(f"main executable {exe} not found in the IPA")
         try:
@@ -76,6 +77,8 @@ class IPAAnalyzer:
         self.binary_checks(mo, exe)
         frameworks = self.framework_checks()
         self.bundle_checks()
+        from ..hardening import ios_ipa
+        hardening = ios_ipa(self, mo)
 
         if not any(n.endswith("PrivacyInfo.xcprivacy") and n.startswith(app_dir) and n.count("/") == 3 for n in self.names):
             self.c.add("IOS-NO-PRIVACY-MANIFEST", app_dir, 0, "No PrivacyInfo.xcprivacy in the app bundle")
@@ -105,6 +108,7 @@ class IPAAnalyzer:
             "permissions": [k for k in info if k.endswith("UsageDescription")],
             "url_schemes": [s for t in (info.get("CFBundleURLTypes") or []) if isinstance(t, dict) for s in t.get("CFBundleURLSchemes", [])],
             "frameworks": frameworks, "tech": fw_kinds, "linked_libraries": len(mo.libraries),
+            "hardening": hardening,
         }
         return ScanResult(self.path, "ipa", app, self.c.results(), len(self.names), self.notes)
 
@@ -202,8 +206,6 @@ class IPAAnalyzer:
             (["CoreData"] if "_OBJC_CLASS_$_NSPersistentContainer" in imp or "_OBJC_CLASS_$_NSManagedObjectContext" in imp else [])
         if db and "_sqlite3_key" not in imp and "setEncryptionKey:" not in sset and "encryptionKey" not in sset:
             c.add("IOS-DB-PLAIN", loc, 0, "Local database APIs: " + ", ".join(db))
-        if not any(JB_HINTS.search(s) for s in strs) and "_OBJC_CLASS_$_DCAppAttestService" not in imp:
-            c.add("IOS-NO-JB-DETECTION", loc, 0, "No jailbreak-detection strings or App Attest usage found")
 
         for s in strs:
             if len(s) < 16:

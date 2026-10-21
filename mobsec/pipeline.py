@@ -102,9 +102,12 @@ def score(findings) -> int:
 
 
 def run(path: str, llm: LLM | None = None, include_tests: bool = False, min_severity: str = "info",
-        max_llm: int = 40, workers: int = 4, include_info_in_llm: bool = False,
+        max_llm: int = 40, workers: int = 4, include_info_in_llm: bool = False, profile: str = "standard",
         log=lambda *a: print(*a, file=sys.stderr)) -> ScanResult:
     result = analyze(path, include_tests=include_tests)
+    from .hardening import apply_profile
+    apply_profile(result.findings, profile)
+    result.app["profile"] = profile
     result.findings = [f for f in result.findings
                        if SEV_ORDER.index(f.severity) <= SEV_ORDER.index(min_severity)]
     log(f"[scan] {result.kind}: {result.files_scanned} files, {len(result.findings)} finding types, "

@@ -82,3 +82,38 @@ def test_secret_patterns_and_mask():
     assert any("password" in k for k in kinds)
     assert secrets.mask("AKIAABCDEFGHIJKLMNOP").startswith("AKIAAB") and "…" in secrets.mask("AKIAABCDEFGHIJKLMNOP")
     assert not list(secrets.scan_text('PASSWORD_PATTERN = "((?=.*\\\\d).{6,20})"'))
+
+
+def test_hardening_source_checklist_and_profile(tmp_path):
+    from mobsec.hardening import apply_profile
+    (tmp_path / "app/src/main/java/com/ex").mkdir(parents=True)
+    (tmp_path / "app/src/main/AndroidManifest.xml").write_text(
+        '<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.ex"><application/></manifest>')
+    (tmp_path / "app/proguard-rules.pro").write_text("-dontobfuscate\n-keepattributes SourceFile,LineNumberTable\n")
+    (tmp_path / "app/src/main/java/com/ex/Guard.kt").write_text(
+        'fun frida() = java.io.File("/proc/self/maps").readText().contains("frida")\n'
+        'fun dbg() = android.os.Debug.isDebuggerConnected()\n')
+    r = scan(str(tmp_path))
+    found = ids(r)
+    assert {"AND-NOT-OBFUSCATED", "AND-DEBUG-INFO-RETAINED", "AND-NO-TAMPER-CHECK", "AND-NO-ROOT-DETECTION"} <= found
+    assert "AND-NO-HOOK-DETECTION" not in found and "AND-NO-ANTI-DEBUG" not in found
+    rows = {row["control"]: row for row in r.app["hardening"]["checklist"]}
+    assert rows["Anti-debugging"]["status"] == "present" and "Guard.kt:2" in rows["Anti-debugging"]["evidence"]
+    assert rows["Root detection"]["status"] == "missing"
+    root = next(f for f in r.findings if f.rule_id == "AND-NO-ROOT-DETECTION")
+    assert root.severity == "info"
+    apply_profile(r.findings, "high-risk")
+    assert root.severity == "medium"
+
+
+def test_hardening_ipa(tmp_path):
+    info = {"CFBundleIdentifier": "com.example.demo", "CFBundleExecutable": "Demo"}
+    binary = make_macho(["_ptrace", "___stack_chk_guard", "_objc_release"],
+                        strings=["/Applications/Cydia.app", "FridaGadget", "AccountViewController", "PaymentManager",
+                                 "LoginViewController", "SettingsViewController"] + [f"Screen{i}Controller" for i in range(30)])
+    p = tmp_path / "demo.ipa"
+    p.write_bytes(make_ipa(info, binary))
+    r = IPAAnalyzer(str(p)).run()
+    found = ids(r)
+    assert not {"IOS-NO-ANTI-DEBUG", "IOS-NO-JB-DETECTION", "IOS-NO-HOOK-DETECTION"} & found
+    assert {"IOS-NO-TAMPER-CHECK", "IOS-NO-ATTESTATION", "IOS-NO-SCREEN-PROTECTION", "IOS-NOT-OBFUSCATED"} <= found

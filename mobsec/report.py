@@ -122,6 +122,12 @@ def write_markdown(result, path: Path):
         if refs:
             out += ["", "References: " + ", ".join(f"[{g['title'][:60]}]({g['url']})" for g in refs)]
         out.append("")
+    hard = (app.get("hardening") or {}).get("checklist") or []
+    if hard:
+        out += ["## Hardening checklist", "", "| Status | Control | Evidence |", "|---|---|---|"]
+        out += [f"| {'present' if r['status'] == 'present' else '**missing**'} | {r['control']} | {str(r['evidence'] or '')[:120]} |"
+                for r in hard]
+        out.append("")
     if result.kind not in ("apk", "ipa"):
         out += ["## Files with issues", "", "| File | Risk | Issues |", "|---|---|---|"]
         for loc, risk, tp, items in files_view(result)[:100]:
@@ -187,6 +193,7 @@ th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--mute
 .fi{padding:8px 14px;border-top:1px solid var(--line)}
 .fi .ln{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--muted)}
 a{color:var(--accent)}
+.ok{color:var(--ok);font-weight:700}.bad{color:var(--high);font-weight:700}
 .kv{display:grid;grid-template-columns:200px 1fr;gap:4px 14px;font-size:14px}.kv div:nth-child(odd){color:var(--muted)}
 .wrap{word-break:break-word}
 @media(max-width:640px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.hero{grid-template-columns:1fr}.kv{grid-template-columns:1fr}
@@ -279,7 +286,21 @@ def write_html(result, path: Path):
             return e(", ".join(f"{k}: {x}" for k, x in v.items()))
         return e(str(v)) if v not in (None, "") else "-"
     kv = "".join(f"<div>{e(k.replace('_', ' '))}</div><div class='mono wrap'>{val(v)}</div>"
-                 for k, v in app.items() if k not in ("score",))
+                 for k, v in app.items() if k not in ("score", "hardening"))
+    hard = app.get("hardening") or {}
+    checklist = hard.get("checklist", [])
+    present = sum(1 for r in checklist if r["status"] == "present")
+    rule_idx = {f.rule_id: i for i, f in enumerate(result.findings)}
+    hrows = "".join(
+        f"<tr><td>{'<span class=ok>&#10003;</span>' if r['status'] == 'present' else '<span class=bad>&#10007;</span>'}</td>"
+        f"<td>{e(r['control'])}</td><td class='wrap muted'>{e(str(r['evidence'] or ''))}</td>"
+        f"<td>{'<a class=jump href=#f' + str(rule_idx[r['rule']]) + '>fix</a>' if r['status'] != 'present' and r['rule'] in rule_idx else ''}</td></tr>"
+        for r in checklist)
+    prot = ", ".join(hard.get("protectors") or []) or "none detected"
+    hard_html = (f"<p class=muted style='font-size:14px'>Anti-reverse-engineering and runtime protections (OWASP MASVS-RESILIENCE). "
+                 f"{present}/{len(checklist)} controls present. Protectors / RASP SDKs: <b>{e(prot)}</b>. "
+                 f"Profile: <b>{e(str(app.get('profile', 'standard')))}</b> (use <span class=mono>--profile high-risk</span> for banking, health, payments).</p>"
+                 f"<table><tr><th></th><th>Control</th><th>Evidence</th><th></th></tr>{hrows}</table>") if checklist else "<p>No hardening data.</p>"
     loc_word = "Locations" if result.kind in ("apk", "ipa") else "Files"
     html = f"""<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1">
 <title>Mobile Security Report</title><style>{CSS}</style></head><body><main>
@@ -291,7 +312,7 @@ def write_html(result, path: Path):
 {notes}
 <h2>Summary</h2><div class=summary>{e(result.summary)}</div>
 <div class=tabs><button class=on data-p=findings>Findings ({len(result.findings)})</button>
-<button data-p=files>{loc_word} with issues ({len(rows)})</button><button data-p=appinfo>App info</button></div>
+<button data-p=files>{loc_word} with issues ({len(rows)})</button><button data-p=hardening>Hardening ({present}/{len(checklist)})</button><button data-p=appinfo>App info</button></div>
 <section class="panel on" id=findings>
 <div class=filters id=sevf><button class=on data-s=all>All</button><button data-s=high>High</button><button data-s=medium>Medium</button>
 <button data-s=low>Low</button><button data-s=info>Info</button><input id=q placeholder="Search findings, files, classes"></div>
@@ -299,6 +320,7 @@ def write_html(result, path: Path):
 <section class=panel id=files><div class=filters><input id=fq placeholder="Filter {loc_word.lower()}"></div>
 <p class=muted style="font-size:14px">Every {('class / file' if result.kind in ('apk', 'ipa') else 'source file')} with at least one issue, riskiest first. Expand to see each problem, the line, and how to fix it.</p>
 {''.join(files_html) or '<p>No files with issues.</p>'}</section>
+<section class=panel id=hardening>{hard_html}</section>
 <section class=panel id=appinfo><h2>Application</h2><div class=kv>{kv}</div>
 <h2>Findings by MASVS group</h2><table><tr><th>MASVS</th><th>Finding types</th></tr>{masvs_rows}</table></section>
 <p class=muted style="margin-top:40px;font-size:13px">Static analysis with retrieval over OWASP MASVS / MASTG. Results need human review and do not replace dynamic testing. Only scan apps you own or are authorised to test.</p>

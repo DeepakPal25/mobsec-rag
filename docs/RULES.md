@@ -1,6 +1,6 @@
 # Rules
 
-109 checks. Severities are defaults; the LLM step may adjust them per app.
+125 checks. Severities are defaults; `--profile high-risk` raises missing hardening controls to medium, and the LLM step may adjust severities per app.
 
 ## Android
 
@@ -48,11 +48,17 @@
 | `AND-CLIPBOARD` | low | MASVS-STORAGE-2 | M6 | CWE-200 | Data copied to the clipboard |
 | `AND-CRYPTO-CBC` | low | MASVS-CRYPTO-1 | M10 | CWE-649 | CBC mode without authentication (verify a MAC is applied) |
 | `AND-CRYPTO-RANDOM` | low | MASVS-CRYPTO-1 | M10 | CWE-330 | Insecure random number generator (java.util.Random) |
+| `AND-DEBUG-INFO-RETAINED` | low | MASVS-RESILIENCE-3 | M7 | CWE-215 | Source file names / line numbers kept in DEX |
 | `AND-DEEPLINK` | low | MASVS-PLATFORM-1 | M4 | CWE-939 | Deep links / custom schemes (verify input validation) |
 | `AND-IMPLICIT-BROADCAST` | low | MASVS-PLATFORM-1 | M8 | CWE-927 | Broadcast sent without a receiver permission |
 | `AND-LOGGING` | low | MASVS-STORAGE-2 | M9 | CWE-532 | Logging in app code (check for sensitive data) |
 | `AND-NATIVE-CANARY` | low | MASVS-CODE-4 | M7 | CWE-121 | Native library built without stack canaries |
+| `AND-NATIVE-NOT-STRIPPED` | low | MASVS-RESILIENCE-3 | M7 | CWE-215 | App native library not stripped (symbols present) |
 | `AND-NATIVE-RELRO` | low | MASVS-CODE-4 | M7 | CWE-119 | Native library without full RELRO |
+| `AND-NO-ANTI-DEBUG` | low | MASVS-RESILIENCE-4 | M7 | CWE-693 | No anti-debugging checks |
+| `AND-NO-HOOK-DETECTION` | low | MASVS-RESILIENCE-4 | M7 | CWE-693 | No Frida / Xposed hooking detection |
+| `AND-NO-TAMPER-CHECK` | low | MASVS-RESILIENCE-2 | M7 | CWE-354 | No app signature / integrity (anti-tampering) check |
+| `AND-NO-TAPJACKING-PROTECTION` | low | MASVS-PLATFORM-3 | M8 | CWE-1021 | No tapjacking / overlay protection |
 | `AND-NOT-OBFUSCATED` | low | MASVS-RESILIENCE-3 | M7 | CWE-693 | Code is not obfuscated (R8/ProGuard not enabled) |
 | `AND-OLD-MINSDK` | low | MASVS-CODE-3 | M8 | CWE-1104 | Supports outdated Android versions (low minSdkVersion) |
 | `AND-OLD-TARGETSDK` | low | MASVS-CODE-3 | M8 | CWE-1104 | Low targetSdkVersion disables newer platform protections |
@@ -62,9 +68,13 @@
 | `AND-WEBVIEW-JS` | low | MASVS-PLATFORM-2 | M4 | CWE-79 | JavaScript enabled in WebView |
 | `AND-DANGEROUS-PERMS` | info | MASVS-PRIVACY-1 | M6 | CWE-250 | Dangerous / sensitive permissions requested |
 | `AND-NATIVE-UNSAFE` | info | MASVS-CODE-4 | M7 | CWE-676 | Native code imports unsafe C functions |
+| `AND-NO-ATTESTATION` | info | MASVS-RESILIENCE-2 | M7 | CWE-693 | No Play Integrity attestation |
+| `AND-NO-EMULATOR-DETECTION` | info | MASVS-RESILIENCE-1 | M7 | CWE-693 | No emulator detection |
 | `AND-NO-FLAG-SECURE` | info | MASVS-PLATFORM-3 | M6 | CWE-200 | FLAG_SECURE not used (screenshots / recents thumbnails allowed) |
 | `AND-NO-PINNING` | info | MASVS-NETWORK-2 | M5 | CWE-295 | No certificate pinning detected |
 | `AND-NO-ROOT-DETECTION` | info | MASVS-RESILIENCE-1 | M7 | CWE-693 | No root detection or Play Integrity check found |
+| `AND-NO-STRING-ENCRYPTION` | info | MASVS-RESILIENCE-3 | M7 | CWE-312 | Sensitive strings are stored in plaintext in the app |
+| `AND-PACKED` | info | MASVS-RESILIENCE-3 | M7 | CWE-693 | App is packed / protected by a commercial protector |
 | `AND-SQLITE-PLAIN` | info | MASVS-STORAGE-1 | M9 | CWE-312 | Unencrypted SQLite database |
 | `AND-TRACKERS` | info | MASVS-PRIVACY-1 | M6 | CWE-359 | Third-party analytics / advertising SDKs |
 
@@ -93,9 +103,13 @@
 | `IOS-DEBUG-FLAGS` | low | MASVS-RESILIENCE-4 | M7 | CWE-489 | Debug / test flags left in code |
 | `IOS-FILE-SHARING` | low | MASVS-STORAGE-2 | M9 | CWE-200 | File sharing enabled (Documents exposed) |
 | `IOS-LOGGING` | low | MASVS-STORAGE-2 | M9 | CWE-532 | NSLog / print logging (check for sensitive data) |
+| `IOS-NO-ANTI-DEBUG` | low | MASVS-RESILIENCE-4 | M7 | CWE-693 | No anti-debugging checks |
 | `IOS-NO-ARC` | low | MASVS-CODE-4 | M7 | CWE-416 | Objective-C code without ARC |
 | `IOS-NO-CANARY` | low | MASVS-CODE-4 | M7 | CWE-121 | Binary built without stack canaries |
+| `IOS-NO-HOOK-DETECTION` | low | MASVS-RESILIENCE-4 | M7 | CWE-693 | No Frida / Substrate hooking detection |
 | `IOS-NO-PRIVACY-MANIFEST` | low | MASVS-PRIVACY-1 | M6 | CWE-359 | Privacy manifest (PrivacyInfo.xcprivacy) missing |
+| `IOS-NO-TAMPER-CHECK` | low | MASVS-RESILIENCE-2 | M7 | CWE-354 | No anti-tampering / re-signing check |
+| `IOS-NOT-OBFUSCATED` | low | MASVS-RESILIENCE-3 | M7 | CWE-693 | Class and method names are not obfuscated |
 | `IOS-NOT-STRIPPED` | low | MASVS-RESILIENCE-3 | M7 | CWE-215 | Debug symbols not stripped |
 | `IOS-OLD-MINOS` | low | MASVS-CODE-3 | M8 | CWE-1104 | Supports outdated iOS versions |
 | `IOS-PASTEBOARD` | low | MASVS-STORAGE-2 | M6 | CWE-200 | General pasteboard used |
@@ -103,8 +117,10 @@
 | `IOS-BUNDLED-HEADERS` | info | MASVS-RESILIENCE-3 | M7 | CWE-540 | Source/header or debug files shipped inside the app bundle |
 | `IOS-DB-PLAIN` | info | MASVS-STORAGE-1 | M9 | CWE-312 | Local database (SQLite / Realm / Core Data) - verify encryption |
 | `IOS-ENCRYPTED` | info | MASVS-RESILIENCE-3 | M7 | CWE-693 | Binary is FairPlay-encrypted (analysis limited) |
+| `IOS-NO-ATTESTATION` | info | MASVS-RESILIENCE-2 | M7 | CWE-693 | No App Attest / DeviceCheck |
 | `IOS-NO-JB-DETECTION` | info | MASVS-RESILIENCE-1 | M7 | CWE-693 | No jailbreak detection or App Attest found |
 | `IOS-NO-PINNING` | info | MASVS-NETWORK-2 | M5 | CWE-295 | No certificate pinning detected |
+| `IOS-NO-SCREEN-PROTECTION` | info | MASVS-PLATFORM-3 | M6 | CWE-200 | No screen recording / screenshot protection |
 | `IOS-PERMISSIONS` | info | MASVS-PRIVACY-1 | M6 | CWE-250 | Privacy-sensitive permissions requested |
 | `IOS-SDKS` | info | MASVS-PRIVACY-1 | M6 | CWE-359 | Embedded third-party frameworks |
 | `IOS-UNSAFE-C` | info | MASVS-CODE-4 | M7 | CWE-676 | Unsafe C functions imported (strcpy, sprintf, ...) |

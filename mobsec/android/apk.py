@@ -162,6 +162,8 @@ class APKAnalyzer:
         self.native_checks()
         self.signing_checks()
         self.secret_checks()
+        from ..hardening import android_apk
+        self.hardening = android_apk(self)
 
         app_classes = [k for k in self.idx.classes if self.pkg_path and k.startswith(self.pkg_path)]
         frameworks = self.detect_frameworks()
@@ -177,6 +179,7 @@ class APKAnalyzer:
             "dex_files": len(dexes), "classes": len(self.idx.classes), "app_classes": len(app_classes),
             "native_libs": sorted({n.split("/")[-1] for n in self.names if n.startswith("lib/") and n.endswith(".so")}),
             "frameworks": frameworks, "trackers": trackers, "signing": sig,
+            "hardening": self.hardening,
         }
         if "Flutter" in frameworks:
             self.notes.append("Flutter app: Dart code is compiled into libapp.so and is only checked for strings/secrets.")
@@ -416,19 +419,6 @@ class APKAnalyzer:
                     secure = True
         if not secure:
             self.c.add("AND-NO-FLAG-SECURE", "classes*.dex", 0, "No Window.setFlags/addFlags(FLAG_SECURE) call found")
-
-        # ---- resilience
-        root_hint = any(ROOT_HINTS.search(s) for s in idx.strings) or any(
-            k.startswith(("Lcom/scottyab/rootbeer/", "Lcom/google/android/play/core/integrity/", "Lcom/google/android/gms/safetynet/"))
-            for k in idx.classes)
-        if not root_hint:
-            self.c.add("AND-NO-ROOT-DETECTION", "classes*.dex", 0, "No root-detection strings or Play Integrity / SafetyNet classes found")
-        app_cls = [k for k in idx.classes if self.pkg_path and k.startswith(self.pkg_path)]
-        if len(app_cls) > 10:
-            readable = sum(1 for k in app_cls if len(k.rsplit("/", 1)[-1].rstrip(";").split("$")[0]) > 2)
-            if readable / len(app_cls) > 0.8:
-                self.c.add("AND-NOT-OBFUSCATED", "classes*.dex", 0,
-                           f"{readable}/{len(app_cls)} app classes keep readable names (e.g. {app_cls[0][1:-1].replace('/', '.')})")
 
         # ---- network: URLs, pinning
         net = False

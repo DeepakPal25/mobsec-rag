@@ -84,6 +84,7 @@ class ClassDef:
     interfaces: list
     access: int
     methods: list  # method idxs defined in this class
+    source_file: str = ""
 
 
 class Dex:
@@ -118,7 +119,8 @@ class Dex:
         for i in range(self.n_cls):
             (cidx, acc, sup, ifaces, _src, _ann, cdata, _sv) = struct.unpack_from("<8I", data, cls_off + i * 32)
             cd = ClassDef(self.types[cidx], self.types[sup] if sup != 0xFFFFFFFF else "",
-                          self._type_list(ifaces), acc, [])
+                          self._type_list(ifaces), acc, [],
+                          self.strings[_src] if _src < len(self.strings) else "")
             if cdata:
                 self._class_data(cdata, cd)
             self.classes.append(cd)

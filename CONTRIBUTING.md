@@ -22,6 +22,7 @@ mobsec ingest            # optional: full OWASP knowledge base
 | `mobsec/android/` | APK analyzer (`apk.py`) and manifest / network-security-config checks shared with source scans |
 | `mobsec/ios/` | IPA analyzer (`ipa.py`) and Info.plist / entitlement checks |
 | `mobsec/source/` | Source-code scanner and its regex rules (Java, Kotlin, Gradle, Swift, ObjC, Dart, JS/TS) |
+| `mobsec/hardening.py` | Hardening checklist (obfuscation, anti-debug, anti-hook, tamper, attestation, RASP/packer detection) and `--profile high-risk` |
 | `mobsec/rag.py` | Knowledge base ingestion, chunking, BM25 (+ optional embeddings) retrieval |
 | `mobsec/llm.py` | Provider clients (Anthropic, OpenAI-compatible, Ollama) and prompts |
 | `mobsec/knowledge/` | Curated fix guides used for retrieval (Markdown, one `##` section per topic) |
